@@ -4,15 +4,15 @@ const app = express()
 const bcrypt = require("bcryptjs")
 app.set("view engine","ejs")
 
-// database connection 
+// database connection garne 
 require("./model/index")
 
-// parse incoming form data
+// parse incoming form data from database
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
 app.get("/register",(req,res)=>{
-    res.redirect("login")
+    res.render("register")
 })
 
 // post api for handling user registration
@@ -23,6 +23,9 @@ app.post("/register", async (req,res)=>{
     const username = req.body.username
     const password = req.body.password
 
+    if(!email || !username || !password){
+        return res.send("Please provide email,username,password")
+    }
     // aako ko email ko kohi xa ki nae find garnu paryo 
 const emailExist =    await users.findAll({
         where  : {
@@ -33,56 +36,50 @@ const emailExist =    await users.findAll({
          res.send("User with that email already registered")
     }else{
          // validation from server side
-    if(!email || !username || !password){
-        return res.send("Please provide email,username,password")
-    }
 
    await  users.create({
         email : email,
         username:username,
         password:bcrypt.hashSync(password,12)
     })
-    res.send("User Registered Successfully")
+    res.redirect("/login")
     }
 
    
 
 })
-// login
-app.get("./login",(req,res)=>{
+
+
+// LOGIN page
+
+app.get("/login",(req,res)=>{
     res.render("login")
 })
 
-app.post("/login",(req,res)=>{
-    const email= req.body.email
-    const password=req.body.password
-    console.log(req.body)
+app.post("/login",async (req,res)=>{
+    const email = req.body.email
+    const password = req.body.password
 
+    // suruma tyo email vayeko kohi hamro users table ma xa ki xainw\
+   const userExists =  await users.findAll({
+        where : {
+            email : email
+        }
+    })
+  
 
-// teo email vako user exist garcha ki gardaina
-const userExists =users.findAll({
-    where:{
-        email:email
-    }
+  if(userExists.length > 0){
+    // second ma password check garnu paryo
+        const isMatch = bcrypt.compareSync(password,userExists[0].password)
+        if(isMatch){
+            res.send("Logged in Sucessfully")
+        }else{
+            res.send("Invalid Email or Password")
+        }
+  }else{
+    res.send("Invalid Email Or password ")
+  }
 })
-
-
-console.log(userExists)
-if(userExists.length > 0){
- const isMatch=   bcrypt.compareSync(password,userExists[0].password)  // password and hash password database ko lekko
-console.log(isMatch)
-if(isMatch){
-    res.send("logged in successfully")
-
-}else{
-    res.send("invalid")
-}
-}else{
-    res.send("invalid email or password")
-}
-})
-
-
 app.listen(3000,function(){
     console.log("NodeJs project  started at port 3000")
 })
